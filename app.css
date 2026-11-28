@@ -10419,13 +10419,11 @@ html[data-theme="void"] .work-cal-d .dot.empty { background: transparent; }
 html[data-theme="void"] .work-cal-d.late .dot { background: #ff8a8a; }
 html[data-theme="void"] .work-cal-typhoon { color: #ff8a8a; }
 html[data-theme="void"] #work-card .work-add { color: var(--on-teal, #111111); }
-/* 租客 list: filter dots next to 搜尋 — visible ring on the dark card */
-html[data-theme="void"] #tenant-vacant-btn,
-html[data-theme="void"] .tenant-search .tenant-chip { box-shadow: inset 0 0 0 1.5px #bdbdbd; }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="count"] { background: #4a3d2c; box-shadow: inset 0 0 0 1.5px #e0bd8a; }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"] { background: #2f4234; box-shadow: inset 0 0 0 1.5px #9bd0a6; }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"] { background: #4a2d2b; box-shadow: inset 0 0 0 1.5px #f0a39d; }
-html[data-theme="void"] #tenant-vacant-btn { background: #3a3a3a; }
+/* 租客 list: the four filter circles keep the same colours as the light themes (no ring, no dimming); the specific selectors beat the dark .ghost fill */
+html[data-theme="void"] #tenant-vacant-btn:not(.on) { background: #e5e5e5; box-shadow: none; border: 0; }
+html[data-theme="void"] .tenant-search .tenant-chip[data-tenant-chip="count"]:not(.on) { background: #e9d6be; box-shadow: none; border: 0; }
+html[data-theme="void"] .tenant-search .tenant-chip[data-tenant-chip="paid"]:not(.on) { background: #e0e7dc; box-shadow: none; border: 0; }
+html[data-theme="void"] .tenant-search .tenant-chip[data-tenant-chip="unpaid"]:not(.on) { background: #f6d4d1; box-shadow: none; border: 0; }
 html[data-theme="void"] #tenant-vacant-btn.on,
 html[data-theme="void"] .tenant-search .tenant-chip.on { background: #f0f0f0; box-shadow: none; }
 html[data-theme="void"] #tenant-vacant-btn.on,
@@ -10463,3 +10461,13 @@ html[data-theme="void"] #note-screen.note-screen { background: var(--paper) !imp
 html[data-theme="void"] .note-shot-btn { background: #242424; box-shadow: 0 0 0 1px #3a3a3a; }
 html[data-theme="void"] .note-shot-img { background: #1c1c1c; }
 html[data-theme="void"] .note-shot-empty { background: #1c1c1c; border-color: #4a4a4a; color: #b0b0b0; }
+
+/* ---- 2609: void theme — no light outer border on the 租客 search card and the 套房/廠房租客 switch card (inner pill, segments and chips keep theirs) ---- */
+html[data-theme="void"] .card.tenant-search,
+html[data-theme="void"] .card:has(> #tenant-kind-seg) { border-color: transparent; }
+/* void: the dark 搜尋 pill runs the full width of its card (circles sit on top of it at the right end) and the text has its own left padding */
+html[data-theme="void"] .card.tenant-search { display: grid; grid-template-columns: 1fr; align-items: center; padding: 4px; }
+html[data-theme="void"] .card.tenant-search > #tenant-search { grid-area: 1 / 1; width: 100%; min-width: 0; box-sizing: border-box; border-radius: 14px; padding: 4px 140px 4px 16px; }
+html[data-theme="void"] .card.tenant-search:has(.tenant-chip.on) > #tenant-search { padding-right: 190px; }
+html[data-theme="void"] .card.tenant-search > .tenant-search-chips { grid-area: 1 / 1; justify-self: end; align-self: center; margin-right: 12px; position: relative; z-index: 10; }
+

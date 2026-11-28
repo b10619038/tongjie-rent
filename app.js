@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-19-50";
-const APP_EDIT_COUNT = 2608;
+const APP_STAMP = "2026-11-28-20-10";
+const APP_EDIT_COUNT = 2609;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -631,7 +631,11 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
-    { text: "修正「本月租金尚未繳納」誤報：租約下個月才開始、或已經預繳的租客不會再被提醒，管理員的「本月未繳租金」戶數也只算真的該繳的租客。開發者用「代操」看租客畫面時，不再跳出租客的通知，也不會把這支手機誤綁成租客，退出代操後會自動綁回管理員", head: "未繳誤報修正", note: "無畫面變更", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
+    { text: "後台「設定」的帳號卡：「身分」那一列改成顯示身分加姓名，例如「開發者 趙O榮」、「負責人 趙O賢」、「管理員 王O明」，一眼就知道目前登入的是誰。上方標題不變", head: "身分顯示姓名", before: "changelog/2026-11-28-account-who-before.svg", after: "changelog/2026-11-28-account-who-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] },
+    { text: "極黑主題下，租客頁最上面兩張卡片（「套房租客／廠房租客」切換和「搜尋」列）最外圈的淺色邊框拿掉；搜尋框的深色膠囊一路拉到卡片右邊，「搜尋」字樣左邊留出空間不再被切到，四個篩選圓點改回和原本主題一樣的顏色。其他主題完全不變", head: "極黑外框拿掉", before: "changelog/2026-11-28-void-card-border-before.svg", after: "changelog/2026-11-28-void-card-border-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] }
+  ] },
+  { ver: "2026-11-28-19-50-2608", items: [
+    { text: "修正「本月租金尚未繳納」誤報：租約下個月才開始、或已經預繳的租客不會再被提醒，管理員的「本月未繳租金」戶數也只算真的該繳的租客。開發者用「代操」看租客畫面時，不再跳出租客的通知，也不會把這支手機誤綁成租客，退出代操後會自動綁回管理員", head: "未繳誤報修正", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-28-19-30-2607", items: [
     { text: "更新紀錄調整：點進單則說明後，上方不再重複顯示一大段粗體標題，只留返回、日期、對象標籤、說明與前後畫面；更新紀錄列表每則之間加上細分隔線；極黑主題下，說明頁改為深色底、前後畫面外框也改成深色，整個畫面最外層的底色改成更深的黑，管理員後台的對象標籤也看得清楚", head: "更新紀錄與極黑底色", before: "changelog/2026-11-28-notes-detail-before.svg", after: "changelog/2026-11-28-notes-detail-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
@@ -3677,6 +3681,8 @@ function notesAutoHead(text) {
     "極黑主題下看不清楚的地方一次修正：租客名單沒有照片時的預設頭像改成深色；行程月曆的日期數字、上下個月箭頭、「行程」標籤、選取日的數字改成清楚可讀；租客名單搜尋旁四個篩選小圓點加上外框；另外退租選單、更新紀錄的對象標籤、公告對象按鈕、虧損金額、資產地圖圖例等文字也調到看得清楚。其他主題完全不變": "極黑主題看得清楚",
     "更新紀錄調整：點進單則說明後，上方不再重複顯示一大段粗體標題，只留返回、日期、對象標籤、說明與前後畫面；更新紀錄列表每則之間加上細分隔線；極黑主題下，說明頁改為深色底、前後畫面外框也改成深色，整個畫面最外層的底色改成更深的黑，管理員後台的對象標籤也看得清楚": "更新紀錄與極黑底色",
     "修正「本月租金尚未繳納」誤報：租約下個月才開始、或已經預繳的租客不會再被提醒，管理員的「本月未繳租金」戶數也只算真的該繳的租客。開發者用「代操」看租客畫面時，不再跳出租客的通知，也不會把這支手機誤綁成租客，退出代操後會自動綁回管理員": "未繳誤報修正",
+    "後台「設定」的帳號卡：「身分」那一列改成顯示身分加姓名，例如「開發者 趙O榮」、「負責人 趙O賢」、「管理員 王O明」，一眼就知道目前登入的是誰。上方標題不變": "身分顯示姓名",
+    "極黑主題下，租客頁最上面兩張卡片（「套房租客／廠房租客」切換和「搜尋」列）最外圈的淺色邊框拿掉；搜尋框的深色膠囊一路拉到卡片右邊，「搜尋」字樣左邊留出空間不再被切到，四個篩選圓點改回和原本主題一樣的顏色。其他主題完全不變": "極黑外框拿掉",
     "租客首頁「內容」裡的「已綁LINE」按鈕：已經綁定時改為灰色、不能按，和設定裡的綁定 LINE 一致。還沒綁定的照舊可按": "首頁已綁LINE不能按",
     "租客設定的綁定 LINE：已經綁定時，按鈕改為不能按的「已綁定LINE」，也不再顯示加入後傳送房號姓名的說明。還沒綁定的用法不變": "已綁定不再重綁",
     "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳": "續約不再標首次已繳",
@@ -38737,8 +38743,15 @@ function bindLunch() {
     };
   });
 }
+// 設定 > 帳號 > 身分: "<role> <name>" for the logged-in account (the page header keeps its own title)
+function adminAccountWho() {
+  const dev = ui.adminCode === "1240";
+  const role = dev ? "開發者" : (isBossAdmin() ? "負責人" : "管理員");
+  const name = dev ? "趙文榮" : (normAdminName(ui.adminName) || (ui.adminCode === "1976" ? "趙正賢" : ""));
+  return name ? role + " " + name : role;
+}
 function adminSettings() {
-  const who = ui.adminCode === "1240" ? "開發者" : "管理員";
+  const who = adminAccountWho();
   const st = notifyStatus();
   const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
   const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
@@ -38747,7 +38760,7 @@ function adminSettings() {
   return `<div class="admin-grid list settings-stack">
     <div class="card card-body">
       <div class="label">帳號</div>
-      <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
+      <div class="row"><span class="k">身分</span><span class="v">${escapeHtml(who)}</span></div>
       <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
       ${isDeveloper() ? `<button type="button" class="row gate-qr-open" id="open-gate-qr"><span class="k">分享網址</span><span class="v">QRcode</span></button>` : ""}
     </div>
