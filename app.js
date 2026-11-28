@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-19-00";
-const APP_EDIT_COUNT = 2606;
+const APP_STAMP = "2026-11-28-19-30";
+const APP_EDIT_COUNT = 2607;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "更新紀錄調整：點進單則說明後，上方不再重複顯示一大段粗體標題，只留返回、日期、對象標籤、說明與前後畫面；更新紀錄列表每則之間加上細分隔線；極黑主題下，說明頁改為深色底、前後畫面外框也改成深色，整個畫面最外層的底色改成更深的黑，管理員後台的對象標籤也看得清楚", head: "更新紀錄與極黑底色", before: "changelog/2026-11-28-notes-detail-before.svg", after: "changelog/2026-11-28-notes-detail-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
+  ] },
+  { ver: "2026-11-28-19-00-2606", items: [
     { text: "極黑主題下看不清楚的地方一次修正：租客名單沒有照片時的預設頭像改成深色；行程月曆的日期數字、上下個月箭頭、「行程」標籤、選取日的數字改成清楚可讀；租客名單搜尋旁四個篩選小圓點加上外框；另外退租選單、更新紀錄的對象標籤、公告對象按鈕、虧損金額、資產地圖圖例等文字也調到看得清楚。其他主題完全不變", head: "極黑主題看得清楚", before: "changelog/2026-11-28-dark-contrast-before.svg", after: "changelog/2026-11-28-dark-contrast-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
   ] },
   { ver: "2026-11-28-18-10-2605", items: [
@@ -1656,7 +1659,7 @@ const THEMES = [
   { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" },
   { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
-  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#1a1a1a", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#1a1a1a" },
+  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#111111", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#111111" },
   { id: "yuhan", name: "奶油", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fffcf8", line: "#d6ccb8", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" },
   { id: "caramel", name: "焦糖", teal: "#5a4332", mid: "#6e5642", soft: "#f3e6d4", chip: "#f6eee3", ink: "#2c241c", paper: "#ffffff", card: "#ffffff", line: "#cbb89a", muted: "#7d6b5c", inkSoft: "#5c5146", onTeal: "#fbf6ef", bar: "#ffffff" }
 ];
@@ -3667,6 +3670,7 @@ function notesAutoHead(text) {
     "水電卡片的水費改為只顯示一年金額": "水費年額",
     "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
     "極黑主題下看不清楚的地方一次修正：租客名單沒有照片時的預設頭像改成深色；行程月曆的日期數字、上下個月箭頭、「行程」標籤、選取日的數字改成清楚可讀；租客名單搜尋旁四個篩選小圓點加上外框；另外退租選單、更新紀錄的對象標籤、公告對象按鈕、虧損金額、資產地圖圖例等文字也調到看得清楚。其他主題完全不變": "極黑主題看得清楚",
+    "更新紀錄調整：點進單則說明後，上方不再重複顯示一大段粗體標題，只留返回、日期、對象標籤、說明與前後畫面；更新紀錄列表每則之間加上細分隔線；極黑主題下，說明頁改為深色底、前後畫面外框也改成深色，整個畫面最外層的底色改成更深的黑，管理員後台的對象標籤也看得清楚": "更新紀錄與極黑底色",
     "租客首頁「內容」裡的「已綁LINE」按鈕：已經綁定時改為灰色、不能按，和設定裡的綁定 LINE 一致。還沒綁定的照舊可按": "首頁已綁LINE不能按",
     "租客設定的綁定 LINE：已經綁定時，按鈕改為不能按的「已綁定LINE」，也不再顯示加入後傳送房號姓名的說明。還沒綁定的用法不變": "已綁定不再重綁",
     "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳": "續約不再標首次已繳",
@@ -3754,7 +3758,6 @@ function notesLayerHtml(level) {
     if (!row) body = `<p class="small">找不到這則說明</p>`;
     else {
       body = `<article class="note-detail">
-        <h2>${escapeHtml(row.text)}</h2>
         <p class="small">${escapeHtml(notesDayLabel(row.day))}</p>
         ${notesAudTagsHtml(row.aud)}
         <p>${escapeHtml(row.text)}</p>
@@ -4167,7 +4170,6 @@ function notesBrowserHtml() {
     if (!row) body = `<p class="small">找不到這則說明</p>`;
     else {
       body = `<article class="note-detail">
-        <h2>${escapeHtml(row.text)}</h2>
         <p class="small">${escapeHtml(notesDayLabel(row.day))}</p>
         ${notesAudTagsHtml(row.aud)}
         <p>${escapeHtml(row.text)}</p>
