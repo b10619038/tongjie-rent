@@ -10396,3 +10396,55 @@ body > #note-screen.note-screen {
 .chat-line-tip { font-size: 11.5px; line-height: 1.45; color: var(--muted); text-align: center; padding: 4px 14px 0; }
 .chat-line-tip.on { color: #0a8f3d; }
 .chat-line-tip a { margin-left: 6px; color: inherit; text-decoration: underline; white-space: nowrap; }
+
+/* ---- 2606: dark theme (void) contrast pass — every rule is scoped to html[data-theme="void"] ---- */
+/* default avatar placeholder (no photo): dark disc + muted silhouette */
+html[data-theme="void"] .avatar { background: #383838; }
+html[data-theme="void"] .avatar-svg circle:nth-child(1) { fill: #383838; }
+html[data-theme="void"] .avatar-svg circle:nth-child(2),
+html[data-theme="void"] .avatar-svg path { fill: #a8a8a8; }
+/* 行程 calendar (本月工作) */
+html[data-theme="void"] #work-card .work-title .led-trip { color: #8ab4ff; }
+html[data-theme="void"] .work-cal-nav button { color: #f0f0f0; }
+html[data-theme="void"] .work-cal-w.sun,
+html[data-theme="void"] .work-cal-w.sat { color: #ff8a8a; }
+html[data-theme="void"] .work-cal-d { color: #e8e8e8; }
+html[data-theme="void"] .work-cal-d.out { color: #949494; }
+html[data-theme="void"] .work-cal-d.wk:not(.on),
+html[data-theme="void"] .work-cal-d.typhoon:not(.on) { color: #ff8a8a; }
+html[data-theme="void"] .work-cal-d.on em { background: var(--teal); color: var(--on-teal, #111111); }
+html[data-theme="void"] .work-cal-d.typhoon.on em { background: #ff8a8a; color: #111111; }
+html[data-theme="void"] .work-cal-d .dot { background: #8ab4ff; }
+html[data-theme="void"] .work-cal-d .dot.empty { background: transparent; }
+html[data-theme="void"] .work-cal-d.late .dot { background: #ff8a8a; }
+html[data-theme="void"] .work-cal-typhoon { color: #ff8a8a; }
+html[data-theme="void"] #work-card .work-add { color: var(--on-teal, #111111); }
+/* 租客 list: filter dots next to 搜尋 — visible ring on the dark card */
+html[data-theme="void"] #tenant-vacant-btn,
+html[data-theme="void"] .tenant-search .tenant-chip { box-shadow: inset 0 0 0 1.5px #bdbdbd; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="count"] { background: #4a3d2c; box-shadow: inset 0 0 0 1.5px #e0bd8a; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"] { background: #2f4234; box-shadow: inset 0 0 0 1.5px #9bd0a6; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"] { background: #4a2d2b; box-shadow: inset 0 0 0 1.5px #f0a39d; }
+html[data-theme="void"] #tenant-vacant-btn { background: #3a3a3a; }
+html[data-theme="void"] #tenant-vacant-btn.on,
+html[data-theme="void"] .tenant-search .tenant-chip.on { background: #f0f0f0; box-shadow: none; }
+html[data-theme="void"] #tenant-vacant-btn.on,
+html[data-theme="void"] .tenant-chip[data-tenant-chip].on { color: #111111; }
+/* money out / solar / map legend */
+html[data-theme="void"] .led-out { color: #ff8a78; }
+html[data-theme="void"] .solar-site-name { color: #e0e0e0; }
+html[data-theme="void"] .map-legend { color: #b4b4b4; }
+html[data-theme="void"] .map-dot { box-shadow: 0 0 0 1px rgba(255,255,255,.55); }
+/* sheets and chips that ended up light-on-light or white-on-light */
+html[data-theme="void"] .install-sheet.checkout-pick-sheet { background: var(--card); border-color: var(--line); }
+html[data-theme="void"] .note-aud:not([data-aud="開發者後台"]):not([data-aud="負責人後台"]):not([data-aud="套房租客"]) { background: #4a4a4a; color: #f0f0f0; }
+html[data-theme="void"] .ann-aud.on { color: var(--on-teal, #111111); }
+/* white text on LINE green is only 2.3:1 — use dark green text in the dark theme */
+html[data-theme="void"] .swipe-reveal,
+html[data-theme="void"] .line-dock-bar,
+html[data-theme="void"] .line-dock-bar strong,
+html[data-theme="void"] .ai-row.me .ai-bubble,
+html[data-theme="void"] #ai-form .ai-send,
+html[data-theme="void"] .ai-send { color: #062b12; }
+html[data-theme="void"] #line-dock-who { color: #0b3d1a !important; }
+html[data-theme="void"] [data-norenew-card].renew-alert .dash-h { color: #ff8a78; }
