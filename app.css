@@ -10122,7 +10122,7 @@ html[data-theme="void"] .site-chip {
 html[data-theme="void"] .chat-sheet,
 html[data-theme="void"] .chat-log,
 html[data-theme="void"] .chat-compose {
-  background: #1a1a1a;
+  background: #111111;
   color: #f5f5f5;
 }
 html[data-theme="void"] .chat-bar { border-bottom-color: #3a3a3a; }
@@ -10448,3 +10448,18 @@ html[data-theme="void"] #ai-form .ai-send,
 html[data-theme="void"] .ai-send { color: #062b12; }
 html[data-theme="void"] #line-dock-who { color: #0b3d1a !important; }
 html[data-theme="void"] [data-norenew-card].renew-alert .dash-h { color: #ff8a78; }
+
+/* ---- 2607: 更新紀錄 detail/list + void page background ---- */
+/* list sheet: thin divider between entries (all themes) */
+#update-mask .log-list .log-ver + .log-ver,
+#update-mask .log-list li + li { border-top: 1px solid var(--line, #e4ebe8); }
+#update-mask .log-list .log-ver + .log-ver { padding-top: 12px; }
+#update-mask .log-list li + li { padding-top: 6px; }
+html[data-theme="void"] #update-mask .log-list .log-ver + .log-ver,
+html[data-theme="void"] #update-mask .log-list li + li { border-top-color: #4a4a4a; }
+/* detail page in the dark theme: dark page, dark frames around the before/after images */
+html[data-theme="void"] .note-screen,
+html[data-theme="void"] #note-screen.note-screen { background: var(--paper) !important; background-color: var(--paper) !important; }
+html[data-theme="void"] .note-shot-btn { background: #242424; box-shadow: 0 0 0 1px #3a3a3a; }
+html[data-theme="void"] .note-shot-img { background: #1c1c1c; }
+html[data-theme="void"] .note-shot-empty { background: #1c1c1c; border-color: #4a4a4a; color: #b0b0b0; }
