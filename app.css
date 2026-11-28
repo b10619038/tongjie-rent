@@ -10471,3 +10471,21 @@ html[data-theme="void"] .card.tenant-search > #tenant-search { grid-area: 1 / 1;
 html[data-theme="void"] .card.tenant-search:has(.tenant-chip.on) > #tenant-search { padding-right: 190px; }
 html[data-theme="void"] .card.tenant-search > .tenant-search-chips { grid-area: 1 / 1; justify-self: end; align-self: center; margin-right: 12px; position: relative; z-index: 10; }
 
+/* ---- 2611: void theme — pressing a tenant card (or other tappable row) never flashes light; pressed = a slightly lighter dark gray, plus the existing scale ---- */
+html[data-theme="void"] * { -webkit-tap-highlight-color: transparent; }
+html[data-theme="void"] .swipe-wrap.slim.is-press .swipe-front,
+html[data-theme="void"] #tenant-list > [data-fold-tenant].is-press,
+html[data-theme="void"] #tenant-list > [data-fold-tenant]:active,
+html[data-theme="void"] .tenant-suggest-item:active,
+html[data-theme="void"] .tenant-suggest-item.is-press,
+html[data-theme="void"] .role-btn:active,
+html[data-theme="void"] .role-btn.is-press { background: #363636; }
+/* ---- 2611: void theme — form fields (input / select / textarea, app-wide) have no visible border at rest; the gray border shows only while editing (focus). Same border width, so nothing shifts. ---- */
+html[data-theme="void"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="color"]), select, textarea) {
+  border-color: transparent !important;
+}
+html[data-theme="void"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="color"]), select, textarea):is(:focus, :focus-visible) {
+  border-color: #5e5e5e !important;
+}
+/* ---- 2611: void theme — the round background behind the active tab (總覽/資產/租客/行程) is clearly lighter than the bar ---- */
+html[data-theme="void"] .tab-bg { background: #454545; }

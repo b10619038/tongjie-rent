@@ -42,7 +42,7 @@ export function publicBinds(data) {
   Object.keys((data && data.payProofs) || {}).forEach(no => {
     const p = data.payProofs[no];
     if (!p || typeof p !== "object") return;
-    payProofs[no] = { ym: p.ym || "", hasText: !!p.hasText, hasImage: !!p.hasImage, at: Number(p.at) || 0 };
+    payProofs[no] = { ym: p.ym || "", hasText: !!p.hasText, hasImage: !!p.hasImage, at: Number(p.at) || 0, early: !!p.early };
   });
   return { byRoom, payProofs, payRooms };
 }
@@ -207,14 +207,15 @@ function notePendingImage(data, userId, room) {
   if (!data.pendingPayImages) data.pendingPayImages = {};
   data.pendingPayImages[userId] = { ym: payYmNow(), room: String(room || ""), at: Date.now() };
 }
-function notePayProof(data, room, kind) {
+function notePayProof(data, room, kind, forYm) {
   const no = String(room || "");
   if (!/^\d{4}$/.test(no)) return null;
-  const ym = payYmNow();
+  const ym = /^\d{4}-\d{2}$/.test(String(forYm || "")) ? String(forYm) : payYmNow();
   if (!data.payProofs) data.payProofs = {};
   const cur = (data.payProofs[no] && data.payProofs[no].ym === ym)
     ? data.payProofs[no]
     : { ym, hasText: false, hasImage: false };
+  if (ym !== payYmNow()) cur.early = true;
   if (kind === "text") cur.hasText = true;
   if (kind === "image") cur.hasImage = true;
   cur.at = Date.now();
@@ -661,6 +662,7 @@ async function paintFacesIntoState(faces) {
 // Taiwan bank apps let the payer share / copy an editable result text; there is no fixed
 // template, so this is a tolerant keyword parser (success words + amount + account tails).
 const XFER_OK = "已收到轉帳資料，謝謝";
+const XFER_EARLY_OK = "已收到轉帳資料，這筆會記為下個月的預繳房租，謝謝";
 const XFER_ASK = "已收到轉帳資料，請再傳「房號 姓名」，方便我們對帳。";
 const XFER_COMPANY_ACCTS = ["04009039686", "00897210912150", "010100035909", "010100034775"];
 function xferNorm(text) {
@@ -792,8 +794,45 @@ function xferMemoBind(state, data, text, userId) {
   }
   return null;
 }
-function noteXferProof(data, room, x) {
-  const p = notePayProof(data, room, "text");
+// APP-32: a transfer/slip that arrives at month-end (day >= EARLY_PAY_DAY, Taipei) from a tenant whose current month is already paid is next month's rent paid early (預繳).
+const EARLY_PAY_DAY = 28;
+function taipeiYmdNow() {
+  try { return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 10); }
+  catch { return new Date().toISOString().slice(0, 10); }
+}
+function nextYmStr(ym) {
+  let y = Number(String(ym || "").slice(0, 4)), m = Number(String(ym || "").slice(5, 7)) + 1;
+  if (!y || !m) return "";
+  if (m > 12) { m = 1; y += 1; }
+  return y + "-" + String(m).padStart(2, "0");
+}
+// Returns the next month ("YYYY-MM") when this slip is an early payment for it, else "". Never writes anything.
+function earlyPayFor(state, no, amount, ymd) {
+  const today = String(ymd || taipeiYmdNow());
+  const ym = today.slice(0, 7);
+  if (Number(today.slice(8, 10)) < EARLY_PAY_DAY) return "";
+  if (!state || !roomOk(no)) return "";
+  const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+  if (!room || room.demo || room.kind === "factory") return "";
+  const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && !x.prospect && !x.applyPending);
+  if (!t) return "";
+  const next = nextYmStr(ym);
+  if (!next || !xferPaidYm(t, ym) || xferPaidYm(t, next)) return "";
+  const end = String(t.leaseEnd || "").slice(0, 7);
+  if (end && end < next) return "";
+  const due = xferRentDue(t, room, next);
+  const amt = Math.round(Number(amount) || 0);
+  if (amt && (!due || amt !== due)) return "";
+  return next;
+}
+async function earlyPayYm(no, amount) {
+  try {
+    if (Number(taipeiYmdNow().slice(8, 10)) < EARLY_PAY_DAY) return "";
+    return earlyPayFor(await loadRentState(), no, amount);
+  } catch { return ""; }
+}
+function noteXferProof(data, room, x, forYm) {
+  const p = notePayProof(data, room, "text", forYm);
   if (!p) return null;
   p.hasImage = true;
   p.receipt = { amount: x.amount || 0, toTail: x.toTail || "", fromTail: x.fromTail || "", toOk: x.toOk !== false };
@@ -1028,9 +1067,10 @@ export async function handleLineEvents(request, env) {
         const px = fl && fl.xfer && fl.xfer.ym === payYmNow() ? fl.xfer : null;
         if (px) {
           rememberPayUser(data, userId, room, d.t.name);
-          noteXferProof(data, room, px);
+          const fy = await earlyPayYm(room, px.amount);
+          noteXferProof(data, room, px, fy);
           delete data.flags[userId];
-          await reply(replyToken, "已綁定 " + room + " " + d.t.name + "\n" + XFER_OK);
+          await reply(replyToken, "已綁定 " + room + " " + d.t.name + "\n" + (fy ? XFER_EARLY_OK : XFER_OK));
         } else {
           await reply(replyToken, "已綁定 " + room + " " + d.t.name);
         }
@@ -1088,11 +1128,12 @@ export async function handleLineEvents(request, env) {
       }
       if (room) {
         rememberPayUser(data, userId, room, "");
-        noteXferProof(data, room, xfer);
+        const fy = await earlyPayYm(room, xfer.amount);
+        noteXferProof(data, room, xfer, fy);
         takePendingImage(data, userId);
         if (data.flags[userId] && data.flags[userId].xfer) delete data.flags[userId];
         dirty = true;
-        if (replyToken) await reply(replyToken, boundNow + XFER_OK);
+        if (replyToken) await reply(replyToken, boundNow + (fy ? XFER_EARLY_OK : XFER_OK));
       } else if (userId) {
         const prev = data.flags[userId] || {};
         data.flags[userId] = Object.assign({}, prev, { at: Date.now(), reason: prev.reason || "xfer",
@@ -1108,8 +1149,9 @@ export async function handleLineEvents(request, env) {
     }
     if (isPayText && target) {
       rememberPayUser(data, userId, target, bound ? "" : nameFromPayText(text, target));
-      let proof = notePayProof(data, target, "text");
-      if (takePendingImage(data, userId)) proof = notePayProof(data, target, "image");
+      const fy = await earlyPayYm(target, 0);
+      let proof = notePayProof(data, target, "text", fy);
+      if (takePendingImage(data, userId)) proof = notePayProof(data, target, "image", fy);
       dirty = true;
       if (!roomUser(data.byRoom && data.byRoom[target])) justBound.push({ room: target, userId });
       if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
@@ -1126,10 +1168,10 @@ export async function handleLineEvents(request, env) {
       }
       const imgRoom = target || payUserRoom(data, userId);
       const existing = imgRoom && data.payProofs && data.payProofs[imgRoom];
-      const awaitingText = !!(existing && existing.ym === payYmNow() && existing.hasText);
+      const awaitingText = !!(existing && existing.hasText && (existing.ym === payYmNow() || (existing.early && existing.ym === nextYmStr(payYmNow()))));
       if (imgRoom && awaitingText) {
         rememberPayUser(data, userId, imgRoom);
-        const proof = notePayProof(data, imgRoom, "image");
+        const proof = notePayProof(data, imgRoom, "image", existing.ym);
         dirty = true;
         if (!roomUser(data.byRoom && data.byRoom[imgRoom])) justBound.push({ room: imgRoom, userId });
         if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
