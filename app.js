@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-14-15";
-const APP_EDIT_COUNT = 2603;
+const APP_STAMP = "2026-11-28-17-55";
+const APP_EDIT_COUNT = 2604;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "租客設定的綁定 LINE：已經綁定時，按鈕改為不能按的「已綁定LINE」，也不再顯示加入後傳送房號姓名的說明。還沒綁定的用法不變", head: "已綁定不再重綁", before: "changelog/2026-11-28-line-bound-before.svg", after: "changelog/2026-11-28-line-bound-after.svg", aud: ["套房租客"] }
+  ] },
+  { ver: "2026-11-28-14-15-2603", items: [
     { text: "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳", head: "續約不再標首次已繳", before: "changelog/2026-11-28-firstpay-renew-before.svg", after: "changelog/2026-11-28-firstpay-renew-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] }
   ] },
   { ver: "2026-11-28-14-05-2602", items: [
@@ -3657,6 +3660,7 @@ function notesAutoHead(text) {
     "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失": "未讀紅點",
     "水電卡片的水費改為只顯示一年金額": "水費年額",
     "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
+    "租客設定的綁定 LINE：已經綁定時，按鈕改為不能按的「已綁定LINE」，也不再顯示加入後傳送房號姓名的說明。還沒綁定的用法不變": "已綁定不再重綁",
     "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳": "續約不再標首次已繳",
     "租客首頁「我的房間」圖卡：已入住的房間不再顯示過期的「空房」說明，改為和其他租客一樣顯示地址": "房間不再顯示空房",
     "設定裡頭像下方的說明改為一行「點頭像可更換大頭貼，生日當日登入有驚喜」，不再分成兩行": "頭像說明一行",
@@ -50995,6 +50999,13 @@ function tenantSettings() {
   const st = notifyStatus();
   const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
   const bound = r.no && lineBindForRoom(r.no);
+  const handoverLine = typeof isHandoverRoom === "function" && isHandoverRoom(r, t);
+  const lineHint = handoverLine
+    ? "交接完成前，LINE 仍是目前這位租客。點交後請新客重新傳送「房號 姓名」。"
+    : (r.lineCleared && !bound
+      ? "請加入官方 LINE，傳送「" + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "」完成綁定。"
+      : "加入後傳送「房號 姓名」，例如 " + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "。");
+  const showLineHint = handoverLine || !bound;
   return `
     <div class="topbar">
       <div>
@@ -51020,8 +51031,8 @@ function tenantSettings() {
       <div class="card card-body">
         <div class="label">綁定LINE</div>
         <div class="row"><span class="k">狀態</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>
-        <button type="button" class="ghost" id="bind-line-set" style="margin-top:10px">${bound ? "再次綁定LINE" : "綁定LINE"}</button>
-        <p class="small" style="margin-top:8px">${isHandoverRoom(r, t) ? "交接完成前，LINE 仍是目前這位租客。點交後請新客重新傳送「房號 姓名」。" : (r.lineCleared && !bound ? "請加入官方 LINE，傳送「" + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "」完成綁定。" : "加入後傳送「房號 姓名」，例如 " + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "。")}</p>
+        <button type="button" class="ghost" id="bind-line-set" style="margin-top:10px"${bound ? " disabled aria-disabled=\"true\"" : ""}>${bound ? "已綁定LINE" : "綁定LINE"}</button>
+        ${showLineHint ? `<p class="small bind-line-hint" style="margin-top:8px">${lineHint}</p>` : ""}
       </div>
       <div class="card card-body">
         <div class="label">通知</div>
@@ -51300,13 +51311,16 @@ function bindTenantSettings() {
   }
   const bindLine = document.getElementById("bind-line-set");
   if (bindLine) {
-    bindIosPress(bindLine);
-    bindLine.onclick = () => {
-      const r = myRoom(); const t = me();
-      const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
-      openLineDraft(msg);
-      toast("已帶好房號和姓名，請按傳送");
-    };
+    const locked = !!(bindLine.disabled || bindLine.getAttribute("aria-disabled") === "true");
+    if (!locked) {
+      bindIosPress(bindLine);
+      bindLine.onclick = () => {
+        const r = myRoom(); const t = me();
+        const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
+        openLineDraft(msg);
+        toast("已帶好房號和姓名，請按傳送");
+      };
+    }
   }
   const idea = document.getElementById("idea-send");
   if (idea) {

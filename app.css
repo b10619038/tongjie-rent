@@ -3255,6 +3255,22 @@ textarea { min-height: 92px; resize: vertical; }
   transition-duration: 0.09s;
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
+.ghost:disabled,
+.ghost[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+  transform: none;
+  color: #8a8a8a;
+  background: #f3f3f3;
+  border-color: #d8d8d8;
+}
+.ghost:disabled:active,
+.ghost[aria-disabled="true"]:active,
+.ghost:disabled.is-press,
+.ghost[aria-disabled="true"].is-press {
+  transform: none;
+}
 .primary { background: var(--teal); color: var(--on-teal, #fff); }
 .btn-dark { background: #3a3a3a; color: #fff; }
 .btn-navy { background: var(--teal); color: var(--on-teal, #fff); border-radius: 999px; }
@@ -9408,6 +9424,15 @@ html[data-theme="void"] .ghost {
   background: #1a1a1a;
   color: #f0f0f0;
   border-color: #3a3a3a;
+}
+html[data-theme="void"] .ghost:disabled,
+html[data-theme="void"] .ghost[aria-disabled="true"] {
+  opacity: 0.45;
+  color: #9a9a9a;
+  background: #1a1a1a;
+  border-color: #3a3a3a;
+  cursor: default;
+  pointer-events: none;
 }
 html[data-theme="void"] .btn-navy {
   background: #f0f0f0;
