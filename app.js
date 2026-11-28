@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-00-20";
-const APP_EDIT_COUNT = 2600;
+const APP_STAMP = "2026-11-28-13-50";
+const APP_EDIT_COUNT = 2601;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "設定裡頭像下方的說明改為一行「點頭像可更換大頭貼，生日當日登入有驚喜」，不再分成兩行", head: "頭像說明一行", before: "changelog/2026-11-28-avatar-hint-line-before.svg", after: "changelog/2026-11-28-avatar-hint-line-after.svg", aud: ["套房租客"] }
+  ] },
+  { ver: "2026-11-28-00-20-2600", items: [
     { text: "更新紀錄的前後圖：點任一張會全螢幕打開，手指左右滑動就能切換「更新前／更新後」，上方有標籤和小圓點顯示目前是哪一張。電腦可用左右方向鍵或畫面上的箭頭切換；點背景、右上角 ✕ 或按 Esc 關閉。可以兩指放大細看，雙擊還原。新舊所有紀錄都適用", head: "前後圖滑動切換", before: "changelog/2026-11-28-note-swipe-before.svg", after: "changelog/2026-11-28-note-swipe-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
   ] },
   { ver: "2026-11-27-23-55-2599", items: [
@@ -3648,6 +3651,7 @@ function notesAutoHead(text) {
     "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失": "未讀紅點",
     "水電卡片的水費改為只顯示一年金額": "水費年額",
     "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
+    "設定裡頭像下方的說明改為一行「點頭像可更換大頭貼，生日當日登入有驚喜」，不再分成兩行": "頭像說明一行",
     "更新完成後第一次打開 App，會自動從下方滑出今天的更新內容，只列出目前畫面相關的項目，按「知道了」關閉": "更新說明",
     "開著 App 時有新版本，下方提示改為「有新版本，點此查看並更新」，不再顯示舊的版本號": "更新提示",
     "更新內容裡點更新前、更新後的圖片可以正常放大查看，不再被清單擋住": "圖片放大",
@@ -50994,7 +50998,7 @@ function tenantSettings() {
           </div>
         </div>
         ${tenantBirthdayInputs(t)}
-        <p class="small avatar-hint"><span>點頭像可更換大頭貼。</span><span>生日當日登入有驚喜</span></p>
+        <p class="small avatar-hint">點頭像可更換大頭貼，生日當日登入有驚喜</p>
       </div>
       ${bioSettingsHtml()}
       <div class="card card-body">
