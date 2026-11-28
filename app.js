@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-17-55";
-const APP_EDIT_COUNT = 2604;
+const APP_STAMP = "2026-11-28-18-10";
+const APP_EDIT_COUNT = 2605;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "租客首頁「內容」裡的「已綁LINE」按鈕：已經綁定時改為灰色、不能按，和設定裡的綁定 LINE 一致。還沒綁定的照舊可按", head: "首頁已綁LINE不能按", before: "changelog/2026-11-28-home-line-bound-before.svg", after: "changelog/2026-11-28-home-line-bound-after.svg", aud: ["套房租客"] }
+  ] },
+  { ver: "2026-11-28-17-55-2604", items: [
     { text: "租客設定的綁定 LINE：已經綁定時，按鈕改為不能按的「已綁定LINE」，也不再顯示加入後傳送房號姓名的說明。還沒綁定的用法不變", head: "已綁定不再重綁", before: "changelog/2026-11-28-line-bound-before.svg", after: "changelog/2026-11-28-line-bound-after.svg", aud: ["套房租客"] }
   ] },
   { ver: "2026-11-28-14-15-2603", items: [
@@ -3660,6 +3663,7 @@ function notesAutoHead(text) {
     "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失": "未讀紅點",
     "水電卡片的水費改為只顯示一年金額": "水費年額",
     "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
+    "租客首頁「內容」裡的「已綁LINE」按鈕：已經綁定時改為灰色、不能按，和設定裡的綁定 LINE 一致。還沒綁定的照舊可按": "首頁已綁LINE不能按",
     "租客設定的綁定 LINE：已經綁定時，按鈕改為不能按的「已綁定LINE」，也不再顯示加入後傳送房號姓名的說明。還沒綁定的用法不變": "已綁定不再重綁",
     "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳": "續約不再標首次已繳",
     "租客首頁「我的房間」圖卡：已入住的房間不再顯示過期的「空房」說明，改為和其他租客一樣顯示地址": "房間不再顯示空房",
@@ -35263,7 +35267,7 @@ function homeView() {
       <div class="btn-row slide-left">
         <button class="${(paidThisMonth(t) || signingRentCovered(t, r) || (!dueNow && !firstPay)) ? "ghost pay-rent" : "btn-navy"}" data-page="pay" data-scroll-pay="1">${(paidThisMonth(t) || signingRentCovered(t, r)) ? "已繳費租金" : "繳費租金"}</button>
         <button class="ghost" data-page="repair"><span class="btn-ic">${icon("fix")}</span>我要報修</button>
-        <button class="ghost${r && lineButtonBound(r.no, t) ? "" : " btn-solid"}" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span><span class="bind-line-label">${r && lineButtonBound(r.no, t) ? "已綁LINE" : "綁定LINE"}</span></button>
+        <button class="ghost${r && lineButtonBound(r.no, t) ? "" : " btn-solid"}" id="bind-line" type="button"${r && lineButtonBound(r.no, t) ? ' disabled aria-disabled="true"' : ""}><span class="btn-ic">${icon("line")}</span><span class="bind-line-label">${r && lineButtonBound(r.no, t) ? "已綁LINE" : "綁定LINE"}</span></button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
       </div>
@@ -45879,6 +45883,7 @@ function bindTenant() {
   const bindLine = document.getElementById("bind-line");
   if (bindLine) {
     bindLine.onclick = () => {
+      if (bindLine.disabled || bindLine.getAttribute("aria-disabled") === "true") return;
       const r = myRoom(); const t = me();
       const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
       openLineDraft(msg);
@@ -45890,6 +45895,8 @@ function bindTenant() {
         if (!btn) return;
         const on = lineButtonBound(myRoom() && myRoom().no, me());
         btn.classList.toggle("btn-solid", !on);
+        btn.disabled = !!on;
+        if (on) btn.setAttribute("aria-disabled", "true"); else btn.removeAttribute("aria-disabled");
         const label = btn.querySelector(".bind-line-label");
         if (label) label.textContent = typeof tr === "function" ? tr(on ? "已綁LINE" : "綁定LINE") : (on ? "已綁LINE" : "綁定LINE");
       }).catch(() => {});
