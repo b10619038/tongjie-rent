@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-14-05";
-const APP_EDIT_COUNT = 2602;
+const APP_STAMP = "2026-11-28-14-15";
+const APP_EDIT_COUNT = 2603;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳", head: "續約不再標首次已繳", before: "changelog/2026-11-28-firstpay-renew-before.svg", after: "changelog/2026-11-28-firstpay-renew-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] }
+  ] },
+  { ver: "2026-11-28-14-05-2602", items: [
     { text: "租客首頁「我的房間」圖卡：已入住的房間不再顯示過期的「空房」說明，改為和其他租客一樣顯示地址", head: "房間不再顯示空房", before: "changelog/2026-11-28-room-occupied-before.svg", after: "changelog/2026-11-28-room-occupied-after.svg", aud: ["套房租客"] }
   ] },
   { ver: "2026-11-28-13-50-2601", items: [
@@ -3654,6 +3657,7 @@ function notesAutoHead(text) {
     "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失": "未讀紅點",
     "水電卡片的水費改為只顯示一年金額": "水費年額",
     "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
+    "開發者與管理員的租客名單：已續約的套房租客在新約第一個月改顯示「已繳」，不再誤標「首次已繳」。真正本月新入住（含已預繳首期）的仍顯示首次已繳": "續約不再標首次已繳",
     "租客首頁「我的房間」圖卡：已入住的房間不再顯示過期的「空房」說明，改為和其他租客一樣顯示地址": "房間不再顯示空房",
     "設定裡頭像下方的說明改為一行「點頭像可更換大頭貼，生日當日登入有驚喜」，不再分成兩行": "頭像說明一行",
     "更新完成後第一次打開 App，會自動從下方滑出今天的更新內容，只列出目前畫面相關的項目，按「知道了」關閉": "更新說明",
@@ -21600,6 +21604,7 @@ function payLabel(tenant, room, opts) {
 }
 function signingRentCovered(t, r) {
   if (!t || t.former || t.demo || !isNewStudioTenant(t, r)) return false;
+  if (typeof renewedTenant === "function" && renewedTenant(t)) return false;
   const bits = firstStudioPayBits(t, r);
   const paidSet = tenantPaidYmSet(t);
   const startYm = String(bits.yearStart || t.leaseStart || "").slice(0, 7);
