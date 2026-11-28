@@ -66,11 +66,16 @@ function boundRoomOf(data, userId) {
 function roomOk(no) {
   return /^(68|70|72|76)\d{2}$/.test(String(no || ""));
 }
+// separators people put between 房號 and 姓名 (space, - _ + / , . : ; ~ * # 、 。 etc.): everything that is not a letter, mark or digit
+function bindSep(s) {
+  return String(s || "").normalize("NFKC").replace(/[^\p{L}\p{M}\p{N}]/gu, "");
+}
 function normBindName(s) {
-  return String(s || "").replace(/[\s\u3000]/g, "");
+  return bindSep(s);
 }
 function cleanBindName(name) {
-  let s = String(name || "").replace(/[\s\u3000]/g, "");
+  // keep inner characters (a record like 甲、乙 stays as is); drop spaces, edge separators and 租客
+  let s = String(name || "").normalize("NFKC").replace(/[\s\u3000]/g, "").replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
   let prev = "";
   while (s && s !== prev) {
     prev = s;
@@ -93,22 +98,28 @@ function scrubBindNames(data) {
   Object.keys(data.byUser || {}).forEach(k => fix(data.byUser[k]));
   return changed;
 }
+// "7632 王小明", "王小明 7632", "7632-王小明", "7632，王小明", "７６３２王小明", "7632號 王小明" ...
+// one 4-digit room (optional 號/室/房) plus a short name, in either order, any separators; free sentences are not a bind
 function parseRoomName(raw) {
-  const text = String(raw || "").trim().replace(/\u3000/g, " ").replace(/\s+/g, " ");
-  let m = text.match(/^(\d{4})\s*(.+)$/);
-  if (m && roomOk(m[1])) {
-    const name = cleanBindName(m[2]);
-    if (normBindName(name)) return { room: m[1], name };
-  }
-  m = text.match(/^(.+?)\s*(\d{4})$/);
-  if (m && roomOk(m[2])) {
-    const name = cleanBindName(m[1]);
-    if (normBindName(name) && !roomOk(normBindName(name))) return { room: m[2], name };
-  }
-  return null;
+  const text = String(raw || "").normalize("NFKC").trim();
+  if (!text || text.length > 40) return null;
+  const re = /(?<!\d)(\d{4})(?!\d)(?:\s*[號室房])?/g;
+  let m, hit = null;
+  while ((m = re.exec(text))) { if (roomOk(m[1])) { hit = m; break; } }
+  if (!hit) return null;
+  let rest = text.slice(0, hit.index) + " " + text.slice(hit.index + hit[0].length);
+  rest = rest.replace(/\d{1,2}\s*月份?(?:的)?(?:房租|租金)?|房租|租金/g, " ");
+  if (/\d/.test(rest)) return null;
+  rest = rest.replace(/(^|[^\p{L}\p{M}])我(?:是|叫)/u, "$1");
+  const name = bindSep(cleanBindName(rest));
+  if (!name) return null;
+  const cjk = /^[\u3400-\u9fff々]+$/.test(name);
+  if (cjk ? (name.length < 2 || name.length > 6) : (name.length < 2 || name.length > 24)) return null;
+  if (roomOk(name)) return null;
+  return { room: hit[1], name };
 }
 function parseBindPhrase(text) {
-  const raw = String(text || "").trim().replace(/\u3000/g, " ").replace(/\s+/g, " ");
+  const raw = String(text || "").normalize("NFKC").trim().replace(/\s+/g, " ");
   const direct = parseRoomName(raw);
   if (direct) return direct;
   const m = raw.match(/^我是\s*(.+?)\s*租客$/);
@@ -221,13 +232,14 @@ function payProofReply(p) {
 
 // ---- LINE binding store v2 (2026-11-27): merged with worker KV, name-checked ----
 const LB_MAPS = ["byRoom", "payUsers", "pending", "flags", "pendingPayImages"];
-const LB_MISMATCH = "房號和姓名對不上，請確認後再傳一次「房號 姓名」（姓名請用租約上的全名）。已通知管理員協助。";
+const LB_MISMATCH = "房號和姓名還沒對上，請再傳一次，例如 7051 許光漢。姓名請用租約上的全名，已通知管理員協助。";
+const LB_HINT = "請傳「房號 姓名」，例如 7051 許光漢，我們就能幫您對帳。";
 function lbPendingText(room, name) {
   return "已收到 " + room + " " + name + "。目前還沒有這間的入住資料，資料建立後會自動完成綁定。";
 }
 function lbAt(v) { return v && typeof v === "object" ? Number(v.at) || 0 : 0; }
 function lbNorm(s) {
-  let x = String(s || "").replace(/[\uFF01-\uFF5E]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248)).replace(/[\s\u3000]/g, "");
+  let x = bindSep(s);
   let prev = "";
   while (x && x !== prev) { prev = x; x = x.replace(/^租客/, "").replace(/租客$/, ""); }
   return x;
@@ -753,20 +765,30 @@ function xferAutoMatch(state, data, x) {
   if (xferRentDue(t, room, ym) !== x.amount) return null;
   return { room: no, name: t.name || "" };
 }
-// Memo like "7632 王小明 11月房租": bind only when the name exactly matches that room's tenant.
+// Memo like "7632 王小明 11月房租", "7632-王小明", "王小明 7632": bind only when the name exactly matches that room's tenant.
 function xferMemoBind(state, data, text, userId) {
-  const raw = xferNorm(text);
-  const re = /(?:^|[^\d])(\d{4})(?!\d)\s*([\u4e00-\u9fff]{2,4})/g;
-  let m;
-  for (const s of [raw, raw.replace(/[ \t]+/g, "")]) while ((m = re.exec(s))) {
-    const no = m[1];
-    if (!roomOk(no)) continue;
+  const base = String(text || "").normalize("NFKC");
+  const CJK = "[\\u3400-\\u9fff々]";
+  const SEP = "[^\\p{L}\\p{M}\\p{N}]*";
+  const reRoomFirst = new RegExp("(?<!\\d)(\\d{4})(?!\\d)(?:\\s*[號室房])?" + SEP + "(" + CJK + "{2,6})", "gu");
+  const reNameFirst = new RegExp("(" + CJK + "{2,6})" + SEP + "(?<!\\d)(\\d{4})(?!\\d)", "gu");
+  const tryName = (no, run, fromEnd) => {
+    if (!roomOk(no)) return null;
     const owner = roomUser(data.byRoom && data.byRoom[no]);
-    if (owner && owner !== userId) continue;
-    for (let n = m[2].length; n >= 2; n--) {
-      const d = lbDecide(state, no, m[2].slice(0, n));
+    if (owner && owner !== userId) return null;
+    for (let n = Math.min(run.length, 4); n >= 2; n--) {
+      const nm = fromEnd ? run.slice(run.length - n) : run.slice(0, n);
+      const d = lbDecide(state, no, nm);
       if (d.kind === "bind") return { room: no, name: d.t.name || "" };
     }
+    return null;
+  };
+  for (const s of [base, base.replace(/[ \t]+/g, "")]) {
+    let m;
+    reRoomFirst.lastIndex = 0;
+    while ((m = reRoomFirst.exec(s))) { const hit = tryName(m[1], m[2], false); if (hit) return hit; }
+    reNameFirst.lastIndex = 0;
+    while ((m = reNameFirst.exec(s))) { const hit = tryName(m[2], m[1], true); if (hit) return hit; }
   }
   return null;
 }
@@ -1037,6 +1059,13 @@ export async function handleLineEvents(request, env) {
       continue;
     }
     const bound = boundRoomOf(data, userId);
+    if (!bound && userId && replyToken && /^[?？¿\s]+$/.test(text) && /\?|？/.test(text)) {
+      const fl = data.flags[userId];
+      if ((fl && (fl.xfer || fl.reason === "mismatch" || fl.reason === "xfer")) || data.pending[userId]) {
+        await reply(replyToken, LB_HINT);
+        continue;
+      }
+    }
     const isImg = msg.type === "image" || msg.type === "video" || msg.type === "file";
     const isPayText = /繳費通知|已繳本月|已繳費|轉帳截圖/.test(text);
     const fromText = roomFromPayText(text);
