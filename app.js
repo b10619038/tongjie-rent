@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-13-50";
-const APP_EDIT_COUNT = 2601;
+const APP_STAMP = "2026-11-28-14-05";
+const APP_EDIT_COUNT = 2602;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "租客首頁「我的房間」圖卡：已入住的房間不再顯示過期的「空房」說明，改為和其他租客一樣顯示地址", head: "房間不再顯示空房", before: "changelog/2026-11-28-room-occupied-before.svg", after: "changelog/2026-11-28-room-occupied-after.svg", aud: ["套房租客"] }
+  ] },
+  { ver: "2026-11-28-13-50-2601", items: [
     { text: "設定裡頭像下方的說明改為一行「點頭像可更換大頭貼，生日當日登入有驚喜」，不再分成兩行", head: "頭像說明一行", before: "changelog/2026-11-28-avatar-hint-line-before.svg", after: "changelog/2026-11-28-avatar-hint-line-after.svg", aud: ["套房租客"] }
   ] },
   { ver: "2026-11-28-00-20-2600", items: [
@@ -3651,6 +3654,7 @@ function notesAutoHead(text) {
     "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失": "未讀紅點",
     "水電卡片的水費改為只顯示一年金額": "水費年額",
     "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
+    "租客首頁「我的房間」圖卡：已入住的房間不再顯示過期的「空房」說明，改為和其他租客一樣顯示地址": "房間不再顯示空房",
     "設定裡頭像下方的說明改為一行「點頭像可更換大頭貼，生日當日登入有驚喜」，不再分成兩行": "頭像說明一行",
     "更新完成後第一次打開 App，會自動從下方滑出今天的更新內容，只列出目前畫面相關的項目，按「知道了」關閉": "更新說明",
     "開著 App 時有新版本，下方提示改為「有新版本，點此查看並更新」，不再顯示舊的版本號": "更新提示",
@@ -35221,7 +35225,7 @@ function homeView() {
         <div class="room-head">
           <div class="label">我的房間</div>
           <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
-          <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
+          <div class="small" style="margin:-8px 0 14px">${escapeHtml(roomHeroSubline(r, t))}</div>
         </div>
         <div class="hero-stats">
           <div class="stat is-cal" id="lease-remain" role="button" tabindex="0"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
@@ -35684,6 +35688,13 @@ function roomPublicTitle(r) {
   if (r.status === "office" || r.no === "7651") return "辦公室";
   if (typeof isStoreNo === "function" && isStoreNo(r.no)) return "店面";
   return r.title || "套房";
+}
+function roomHeroSubline(r, t) {
+  const note = String((r && r.note) || "").trim();
+  const loc = (r && r.location) || roomAddress((r && r.no) || "");
+  const active = !!(t && !t.former && !t.incoming && !t.placeholder);
+  if (active && note === "空房") return loc;
+  return note || loc;
 }
 function roomAmenityList(r) {
   if (r && r.kind === "factory") return (Array.isArray(r.amenities) && r.amenities.length) ? r.amenities : ["電力", "停車"];
